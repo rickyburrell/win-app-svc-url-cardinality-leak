@@ -6,7 +6,7 @@
 #   - Sufficient permissions on the target subscription to create resource groups and App Services
 
 $location       = 'eastus'
-$deploymentName = 'leak-test-app'
+$deploymentName = 'win-app-svc-url-cardinality-leak'
 
 # P1v3 / P2v3 / P3v3 are all Premium V3 — same IIS/ASP.NET Core runtime.
 # P2v3 gives enough headroom for a sustained load test.

@@ -3,10 +3,10 @@
 # Run provision.ps1 first to create the infrastructure.
 
 $resourceGroup  = 'rg-win-app-svc-url-cardinality-leak'
-$deploymentName = 'leak-test-app'
+$deploymentName = 'win-app-svc-url-cardinality-leak'
 
 $scriptDir   = $PSScriptRoot
-$repoRoot    = Split-Path -Parent $scriptDir          # leak-test-app\
+$repoRoot    = Split-Path -Parent $scriptDir          # win-app-svc-url-cardinality-leak\
 $projectPath = Join-Path $repoRoot 'WinAppSvcUrlCardinalityLeak'
 $publishDir  = Join-Path $repoRoot '.publish'
 $zipPath     = Join-Path $repoRoot '.publish.zip'
