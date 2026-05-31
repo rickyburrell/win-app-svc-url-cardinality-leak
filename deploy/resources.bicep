@@ -15,6 +15,8 @@ var appServicePlanName = 'asp-win-app-svc-url-cardinality-leak'
 var webAppName         = 'app-win-app-svc-url-cardinality-leak-${suffix}'
 var logAnalyticsName   = 'law-win-app-svc-url-cardinality-leak-${suffix}'
 var appInsightsName    = 'ai-win-app-svc-url-cardinality-leak'
+// Storage: 3-24 chars, lowercase alphanumeric only — 'stwinappsvcleak' = 15 + 6 suffix = 21
+var storageAccountName = 'stwinappsvcleak${suffix}'
 
 // ── Log Analytics ─────────────────────────────────────────────────────────────
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
@@ -38,6 +40,43 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     WorkspaceResourceId: logAnalytics.id
   }
 }
+
+// ── Storage account (dump / LeakTrack diagnostic storage) ────────────────────
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: storageAccountName
+  location: location
+  sku: { name: 'Standard_LRS' }
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+    supportsHttpsTrafficOnly: true
+    minimumTlsVersion: 'TLS1_2'
+    allowBlobPublicAccess: false
+  }
+}
+
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource dumpsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'dumps'
+  properties: { publicAccess: 'None' }
+}
+
+// SAS token: blob service, all permissions, service+container+object scope, expires 2030-01-01
+var sasExpiry = '2030-01-01T00:00:00Z'
+var accountSasParams = {
+  signedServices: 'b'
+  signedPermission: 'rwdlacup'
+  signedResourceTypes: 'sco'
+  signedExpiry: sasExpiry
+  signedProtocol: 'https'
+}
+var sasToken = storageAccount.listAccountSas('2023-01-01', accountSasParams).accountSasToken
+var dumpsSasUri = '${storageAccount.properties.primaryEndpoints.blob}dumps?${sasToken}'
 
 // ── App Service Plan (Windows Premium V3) ────────────────────────────────────
 resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
@@ -112,7 +151,12 @@ var appSettings = [
   // Required by Microsoft support to pinpoint the native leak source.
   {
     name: 'WEBSITE_CRASHMONITORING_SETTINGS'
-    value: '{"StartTimeUtc":"2026-01-01T00:00:00.000Z","MaxHours":8760,"MaxDumpCount":10,"InjectLeakTrack":true}'
+    value: '{"StartTimeUtc":"2026-05-31T00:00:00.000Z","MaxHours":360,"MaxDumpCount":3,"ExceptionFilter":"-f E053534F -f C00000FD.STACK_OVERFLOW","InjectLeakTrack":true}'
+  }
+  // DaaS dump storage — LeakTrack and memory dumps are uploaded here
+  {
+    name: 'WEBSITE_DAAS_STORAGE_SASURI'
+    value: dumpsSasUri
   }
 ]
 
@@ -252,3 +296,5 @@ resource webAppDiags 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' 
 // ── Outputs ───────────────────────────────────────────────────────────────────
 output webAppName                 string = webApp.name
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
+output storageAccountName         string = storageAccount.name
+output dumpContainerUri           string = '${storageAccount.properties.primaryEndpoints.blob}dumps'

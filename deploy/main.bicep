@@ -29,3 +29,5 @@ module resources 'resources.bicep' = {
 
 output webAppName                 string = resources.outputs.webAppName
 output appInsightsConnectionString string = resources.outputs.appInsightsConnectionString
+output storageAccountName         string = resources.outputs.storageAccountName
+output dumpContainerUri           string = resources.outputs.dumpContainerUri
