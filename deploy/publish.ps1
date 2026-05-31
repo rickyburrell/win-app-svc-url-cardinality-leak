@@ -67,7 +67,6 @@ try {
     Write-Host ""
     Write-Host "Publish succeeded." -ForegroundColor Green
     Write-Host "  URL : https://$webAppName.azurewebsites.net"
-    Write-Host "  Docs: https://$webAppName.azurewebsites.net/docs"
 } finally {
     Write-Host "Cleaning up build artefacts..."
     if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }

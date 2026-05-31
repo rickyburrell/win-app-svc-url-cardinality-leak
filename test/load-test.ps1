@@ -1,8 +1,8 @@
-# IIS in-process ANCM native request-context leak driver.
+# IIS in-process native request-context leak driver.
 #
 # Sends GET requests with deep random URL paths. IIS allocates one native
 # request-context block per URL-prefix level and leaks them all under
-# ASP.NET Core in-process hosting (aspnetcorev2_inprocess.dll).
+# ASP.NET Core IIS in-process hosting on Windows.
 #
 #   URL shape : /{guid}/{r0}/{r1}/.../{rN-1}
 #   GUID at depth 1 → every prefix in the chain is unique per request

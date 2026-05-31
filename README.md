@@ -70,3 +70,97 @@ You should see a steady, linear climb that does not plateau. Stop the load test 
 Each request URL has the shape `/{guid}/{rand}/{rand}/...` — the GUID at depth 1 ensures every prefix chain is globally unique. The hosting layer allocates a native block for each URL prefix level and does not free them. With 35 segments per request and 200 concurrent workers, native memory grows at roughly 15–20 KB/request.
 
 The application code itself (`Program.cs`) is intentionally trivial — a catch-all route that returns 200 OK — to rule out any application-level cause.
+
+---
+
+## Anatomy of a leaked block
+
+This section documents the internal structure of the leaked native objects as recovered from a production process dump (w3wp.exe, 13 days uptime, ~34.8 million leaked objects, ~11.4 GB native heap growth).
+
+### LFH bucket distribution
+
+Block size correlates directly with URL path length. Four sizes dominate:
+
+| Bucket | Block size | URL length | Leaked blocks | Heap cost |
+|--------|-----------|------------|---------------|-----------|
+| 0x130  | 304 bytes | ≤ ~100 UTF-16 chars | ~3,848,000 | ~1.17 GB |
+| 0x140  | 320 bytes | ~104–108 chars | ~16,100,000 | ~5.15 GB |
+| 0x150  | 336 bytes | ~112–116 chars | ~7,686,000 | ~2.58 GB |
+| 0x160  | 352 bytes | ~120–124 chars | ~7,168,000 | ~2.52 GB |
+| | | **Total** | **~34,802,000** | **~11.42 GB** |
+
+### Block layout
+
+Every leaked object shares the same fixed layout. The discriminator used to identify them is a **self-pointer at offset +0x48** that always points to `block_address + 0x68` — the start of the inline UTF-16LE URL string.
+
+```
+Offset  Size    Content
+------  ------  -------------------------------------------------------
++0x00   8 B     Binary header / internal cookie (varies per block)
++0x08   8 B     Type tag — high byte: 0x96 / 0x8c / 0x8e / 0x90
+                          low 16 bits: monotonically-incrementing alloc ID
++0x10   8 B     Pointer → external heap object (parent / context)
++0x18   8 B     Pointer → external heap object
++0x20   8 B     Pointer → external heap object
++0x28   8 B     Pointer → external heap object
++0x30   8 B     null
++0x38   8 B     null
++0x40   8 B     null
++0x48   8 B     *** SELF-POINTER → (this + 0x68) ***
+                Points to the inline URL string immediately below
++0x50   8 B     Opaque value (observed: timestamp or monotonic ID)
++0x58   8 B     High DWORD = 0x00000100 (constant); low DWORD varies
++0x60   4 B     Small integer — observed values: 7 or 8
++0x64   4 B     Secondary tag / cookie
++0x68   var     UTF-16LE null-terminated string:
+                MACHINE/WEBROOT/APPHOST/<site-name>/<url-path>
+  ...   var     Null terminator + padding to block end
+```
+
+### Raw hex example (320-byte block at `0x00000292802fb0b0`)
+
+```
+00000292`802fb0b0  e2 9b 0e 6d 2d 74 f8 6f  1a 5e 32 98 e1 00 00 96  ; +0x00 header | +0x08 tag (0x96)
+00000292`802fb0c0  50 43 d5 c5 b8 02 00 00  50 16 69 c0 b5 02 00 00  ; +0x10 ptr     | +0x18 ptr
+00000292`802fb0d0  80 e1 2f 80 92 02 00 00  40 40 4c c0 b5 02 00 00  ; +0x20 ptr     | +0x28 ptr
+00000292`802fb0e0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ; +0x30 null    | +0x38 null
+00000292`802fb0f0  00 00 00 00 00 00 00 00  18 b1 2f 80 92 02 00 00  ; +0x40 null    | +0x48 self-ptr → +0x68
+00000292`802fb100  e7 10 1a 6a 79 da fc 3f  ee 0c 1c 2a 00 01 00 00  ; +0x50 opaque  | +0x58 (0x100 constant)
+00000292`802fb110  07 00 00 00 fe 95 ed b7  4d 00 41 00 43 00 48 00  ; +0x60 int=7   | +0x68 ← string start: "M A C H"
+00000292`802fb120  49 00 4e 00 45 00 2f 00  57 00 45 00 42 00 52 00  ;  "I N E /     W E B R"
+00000292`802fb130  4f 00 4f 00 54 00 2f 00  41 00 50 00 50 00 48 00  ;  "O O T /     A P P H"
+00000292`802fb140  4f 00 53 00 54 00 2f 00  -- -- -- -- -- -- -- --  ;  "O S T /     <site-name> ..."
+00000292`802fb150  -- -- -- -- -- -- -- --  -- -- -- -- -- -- -- --  ;  (UTF-16LE URL path continues)
+  ...                                                                 ;  ...
+00000292`802fb1b0  00 00 ...                                          ;  null terminator
+```
+
+Decoded string at +0x68:
+```
+MACHINE/WEBROOT/APPHOST/<site-name>/entities/12345678/AbCdEfGhIjKlMnOpQrSt01/seg-a
+```
+
+The self-pointer at +0x48 (`00000292802fb118`) = block base (`00000292802fb0b0`) + `0x68` ✓
+
+### Inline URL string format
+
+The string at +0x68 is always the IIS metabase application path followed by the full request URL path:
+
+```
+MACHINE/WEBROOT/APPHOST/<site-name>/<url-path>
+```
+
+`MACHINE/WEBROOT/APPHOST/` is the fixed IIS metabase prefix used exclusively by IIS and HTTP.SYS internally. The presence of this prefix in every leaked block — and the one-to-one correspondence with request throughput — is the primary evidence that these are native IIS/HTTP request path structures, not managed objects or telemetry buffers.
+
+### URL length → bucket size mapping
+
+The four dominant LFH bucket sizes map directly to URL path variants:
+
+| Bucket | Example path suffix | Decoded |
+|--------|--------------------|-----------------------|
+| 0x130 (304 B) | `entities/12345678/AbCdEfGhIjKlMnOpQrSt01/seg-a` | 4 segments |
+| 0x140 (320 B) | `entities/12345678/AbCdEfGhIjKlMnOpQrSt01/seg-a/seg-b` | 5 segments |
+| 0x150 (336 B) | `entities/12345678/AbCdEfGhIjKlMnOpQrSt01/seg-a/seg-b/seg-c` | 6 segments |
+| 0x160 (352 B) | `entities/12345678/AbCdEfGhIjKlMnOpQrSt01/seg-a/seg-b/seg-c/seg-d` | 7 segments |
+
+Every block across all samples contained a real HTTP request path — one leaked block per request, confirming the leak is one native structure per HTTP request that is never freed.

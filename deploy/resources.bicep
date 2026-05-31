@@ -1,4 +1,4 @@
-// Minimal Windows App Service to reproduce the IIS in-process ANCM native request-context leak.
+// Minimal Windows App Service to reproduce the IIS in-process native request-context leak.
 // Stripped to the minimum needed:
 //   - Windows App Service (kind: 'app')
 //   - .NET 8.0 LTS, 64-bit, IIS Integrated pipeline
@@ -38,7 +38,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-// ── App Service Plan (Windows Premium V3 — same family as prod P3v3) ──────────
+// ── App Service Plan (Windows Premium V3) ────────────────────────────────────
 resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: appServicePlanName
   location: location
@@ -48,19 +48,18 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
   }
   kind: 'app' // Windows
   properties: {
-    reserved: false // false = Windows (mirrors prod)
+    reserved: false // false = Windows
     perSiteScaling: false
   }
 }
 
-// ── App settings — mirrors production exactly ─────────────────────────────────
+// ── App settings ─────────────────────────────────────────────────────────────
 var appSettings = [
-  // Required for ZipDeploy; matches prod setting
   {
     name: 'WEBSITE_RUN_FROM_PACKAGE'
     value: '1'
   }
-  // Ensures appsettings.json (not appsettings.Development.json) is loaded — matches prod
+  // Ensures appsettings.json (not appsettings.Development.json) is loaded
   {
     name: 'ASPNETCORE_ENVIRONMENT'
     value: 'Production'
@@ -70,24 +69,18 @@ var appSettings = [
     name: 'CURRENT_STACK'
     value: 'dotnet'
   }
-  // Verbose ASP.NET Core errors — matches prod
+  // Verbose ASP.NET Core errors
   {
     name: 'ASPNETCORE_DETAILEDERRORS'
     value: '1'
-  }
-  // SpaProxy assembly stub — matches prod app settings
-  {
-    name: 'ASPNETCORE_HOSTINGSTARTUPASSEMBLIES'
-    value: 'Microsoft.AspNetCore.SpaProxy'
   }
   {
     name: 'WEBSITE_TIME_ZONE'
     value: 'UTC'
   }
-  // Warmup path — matches prod
   {
     name: 'WEBSITE_WARMUP_PATH'
-    value: '/images/v1/echo?echo=Warmup'
+    value: '/echo?echo=warmup'
   }
   // Application Insights
   {
@@ -120,7 +113,7 @@ var appSettings = [
 resource webApp 'Microsoft.Web/sites@2024-04-01' = {
   name: webAppName
   location: location
-  kind: 'app' // Windows Web app — matches prod (not 'app,linux')
+  kind: 'app' // Windows Web app (not 'app,linux')
   identity: {
     type: 'SystemAssigned'
   }
@@ -129,17 +122,17 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
     httpsOnly: true
     clientAffinityEnabled: false
     siteConfig: {
-      // .NET 8.0 LTS — matches prod netFrameworkVersion
+      // .NET 8.0 LTS
       netFrameworkVersion: 'v8.0'
-      // 64-bit worker — matches prod use32BitWorkerProcess: false
+      // 64-bit worker
       use32BitWorkerProcess: false
-      // Always On — matches prod (prevents cold-start skewing the test)
+      // Always On — prevents cold-start skewing the test
       alwaysOn: true
-      // HTTP/2 — matches prod
+      // HTTP/2
       http20Enabled: true
-      // IIS Integrated pipeline — matches prod managedPipelineMode
+      // IIS Integrated pipeline
       managedPipelineMode: 'Integrated'
-      // Load balancing — matches prod
+      // Load balancing
       loadBalancing: 'LeastRequests'
       // CURRENT_STACK metadata for Portal display
       metadata: [
@@ -148,7 +141,7 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
           value: 'dotnet'
         }
       ]
-      // Preload enabled — matches prod virtualApplications
+      // Preload enabled
       virtualApplications: [
         {
           virtualPath: '/'
@@ -156,11 +149,10 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
           preloadEnabled: true
         }
       ]
-      // Default document — opens Swagger on browse
       defaultDocuments: [
-        'docs/index.html'
+        'index.html'
       ]
-      // TLS — matches prod
+      // TLS
       ftpsState: 'FtpsOnly'
       minTlsVersion: '1.2'
       scmMinTlsVersion: '1.2'
@@ -169,8 +161,7 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
       httpLoggingEnabled: true
       requestTracingEnabled: true
       logsDirectorySizeLimit: 35
-      // Health check — same path as prod
-      healthCheckPath: '/images/v1/echo?echo=health'
+      healthCheckPath: '/echo?echo=health'
       // Public access — no Front Door restriction for the test app
       publicNetworkAccess: 'Enabled'
       ipSecurityRestrictionsDefaultAction: 'Allow'

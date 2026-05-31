@@ -8,8 +8,8 @@
 $location       = 'eastus'
 $deploymentName = 'leak-test-app'
 
-# P1v3 / P2v3 / P3v3 are all Premium V3 — same IIS/ASP.NET Core runtime as prod P3v3.
-# P2v3 gives enough headroom for a sustained load test without the prod P3v3 cost.
+# P1v3 / P2v3 / P3v3 are all Premium V3 — same IIS/ASP.NET Core runtime.
+# P2v3 gives enough headroom for a sustained load test.
 $appServicePlanSku = 'P2v3'
 
 $scriptDir = $PSScriptRoot

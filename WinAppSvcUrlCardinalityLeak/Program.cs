@@ -13,7 +13,7 @@ app.MapGet("/", (HttpContext ctx) =>
         "text/html");
 });
 
-app.MapGet("/images/v1/echo", (string echo) => Results.Ok(echo));
+app.MapGet("/echo", (string echo) => Results.Ok(echo));
 
 app.MapGet("/{*path}", () => Results.Ok());
 

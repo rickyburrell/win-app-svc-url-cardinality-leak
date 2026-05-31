@@ -1,9 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11819.183 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAppSvcUrlCardinalityLeak", "WinAppSvcUrlCardinalityLeak\WinAppSvcUrlCardinalityLeak.csproj", "{52FAB74E-BDD0-42EE-9961-0E60AE2A969A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A6A4026C-46B0-4BDD-AE76-DCCBACCED3BF}"
+	ProjectSection(SolutionItems) = preProject
+		test\load-test.ps1 = test\load-test.ps1
+		deploy\provision.ps1 = deploy\provision.ps1
+		deploy\publish.ps1 = deploy\publish.ps1
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,5 +38,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5F916A4B-B170-49CB-8A96-95B084688D9B}
 	EndGlobalSection
 EndGlobal
