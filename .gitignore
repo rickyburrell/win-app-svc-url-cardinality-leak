@@ -1,0 +1,7 @@
+/.vs
+/dump
+**/bin/
+**/obj/
+*.bak
+/.publish.zip
+/.publish
