@@ -5,7 +5,7 @@
 #   - Azure CLI installed (az)
 #   - Sufficient permissions on the target subscription to create resource groups and App Services
 
-$location       = 'eastus'
+$location       = 'southafricanorth'
 $deploymentName = 'win-app-svc-url-cardinality-leak'
 
 # P1v3 / P2v3 / P3v3 are all Premium V3 — same IIS/ASP.NET Core runtime.
