@@ -79,7 +79,7 @@ Leak confirmed on the following platform. Versions are recorded here so the repo
 
 | Component | Value |
 |---|---|
-| Date first observed | 2026-04-29 |
+| Dump captured | 2026-04-29 19:29 UTC |
 | OS | Windows Server 2022, build 20348 |
 | IIS | 10.0.20348 |
 | ASP.NET Core runtime | 8.0.25 |
