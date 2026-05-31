@@ -1,4 +1,4 @@
-# Provisions the rg-leak-test-app resource group and all Azure resources.
+# Provisions the rg-win-app-svc-url-cardinality-leak resource group and all Azure resources.
 # Run once (or re-run to update infrastructure); safe to re-run — idempotent.
 #
 # Prerequisites:
@@ -58,7 +58,7 @@ if ($result.properties.provisioningState -eq 'Succeeded') {
     Write-Host "Provisioning succeeded." -ForegroundColor Green
     Write-Host "  Web App : $webAppName"
     Write-Host "  URL     : https://$webAppName.azurewebsites.net"
-    Write-Host "  Portal  : https://portal.azure.com/#resource/subscriptions/$subscriptionId/resourceGroups/rg-leak-test-app/providers/Microsoft.Web/sites/$webAppName"
+    Write-Host "  Portal  : https://portal.azure.com/#resource/subscriptions/$subscriptionId/resourceGroups/rg-win-app-svc-url-cardinality-leak/providers/Microsoft.Web/sites/$webAppName"
     Write-Host ""
     Write-Host "Next: run .\publish.ps1 to build and deploy the app." -ForegroundColor Cyan
 } else {

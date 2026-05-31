@@ -5,3 +5,5 @@
 *.bak
 /.publish.zip
 /.publish
+/deploy/*.json
+/.claude

@@ -6,7 +6,11 @@ param location string = 'eastus'
 @allowed(['P1v3', 'P2v3', 'P3v3'])
 param appServicePlanSkuName string = 'P2v3'
 
-var rgName = 'rg-leak-test-app'
+var rgName = 'rg-win-app-svc-url-cardinality-leak'
+
+// 6-char suffix derived from subscription ID — makes globally-unique resource names
+// stable across re-deployments within the same subscription.
+var suffix = take(uniqueString(subscription().subscriptionId), 6)
 
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgName
@@ -19,6 +23,7 @@ module resources 'resources.bicep' = {
   params: {
     location:               location
     appServicePlanSkuName:  appServicePlanSkuName
+    suffix:                 suffix
   }
 }
 

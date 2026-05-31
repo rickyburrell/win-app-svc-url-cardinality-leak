@@ -8,11 +8,12 @@
 
 param location string
 param appServicePlanSkuName string
+param suffix string
 
 // ── Naming ───────────────────────────────────────────────────────────────────
 var appServicePlanName = 'asp-win-app-svc-url-cardinality-leak'
-var webAppName         = 'app-win-app-svc-url-cardinality-leak'
-var logAnalyticsName   = 'law-win-app-svc-url-cardinality-leak'
+var webAppName         = 'app-win-app-svc-url-cardinality-leak-${suffix}'
+var logAnalyticsName   = 'law-win-app-svc-url-cardinality-leak-${suffix}'
 var appInsightsName    = 'ai-win-app-svc-url-cardinality-leak'
 
 // ── Log Analytics ─────────────────────────────────────────────────────────────
