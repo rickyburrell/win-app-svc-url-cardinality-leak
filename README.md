@@ -73,6 +73,24 @@ The application code itself (`Program.cs`) is intentionally trivial — a catch-
 
 ---
 
+## Environment
+
+Leak confirmed on the following platform. Versions are recorded here so the report can be dated and matched against future fixes.
+
+| Component | Value |
+|---|---|
+| Date first observed | 2026-04-29 |
+| OS | Windows Server 2022, build 20348 |
+| IIS | 10.0.20348 |
+| ASP.NET Core runtime | 8.0.25 |
+| `aspnetcorev2_inprocess.dll` | 18.0.26044.25 (ships with ASP.NET Core 8.0.25) |
+| `aspnetcorev2.dll` (platform/IIS module) | 13.1.19331.0 (Azure App Service platform-managed) |
+| Hosting model | IIS in-process |
+
+**Note on module attribution:** The leak is in the IIS in-process hosting layer, but the exact module responsible is unconfirmed without private symbols. Azure Windows App Service injects additional native modules into the IIS pipeline (`ModSecurity IIS`, `iisnode`, `ApplicationRequestRouting`, `RewriteModule`, and others) alongside `AspNetCoreModuleV2`. Any of these could be the source of the unreleased native request structures.
+
+---
+
 ## Anatomy of a leaked block
 
 This section documents the internal structure of the leaked native objects as recovered from a production process dump (w3wp.exe, 13 days uptime, ~34.8 million leaked objects, ~11.4 GB native heap growth).
