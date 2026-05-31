@@ -108,6 +108,12 @@ var appSettings = [
     name: 'DiagnosticServices_EXTENSION_VERSION'
     value: '~3'
   }
+  // LeakTrack: injects LeakTrack.dll into w3wp to record allocation call stacks in memory dumps.
+  // Required by Microsoft support to pinpoint the native leak source.
+  {
+    name: 'WEBSITE_CRASHMONITORING_SETTINGS'
+    value: '{"StartTimeUtc":"2026-01-01T00:00:00.000Z","MaxHours":8760,"MaxDumpCount":10,"InjectLeakTrack":true}'
+  }
 ]
 
 // ── Web App ───────────────────────────────────────────────────────────────────
