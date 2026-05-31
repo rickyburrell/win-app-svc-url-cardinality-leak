@@ -14,9 +14,12 @@ $appServicePlanSku = 'P2v3'
 
 $scriptDir = $PSScriptRoot
 
-Write-Host "Logging in to Azure..."
-az login
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+az account show --output none 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Logging in to Azure..."
+    az login --output none
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 
 $accounts = az account list --query "[].{Name:name, Id:id}" -o json | ConvertFrom-Json
 if ($accounts.Count -eq 0) { Write-Error "No subscriptions found."; exit 1 }
