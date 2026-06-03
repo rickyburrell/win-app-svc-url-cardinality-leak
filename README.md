@@ -1,5 +1,21 @@
 # win-app-svc-url-cardinality-leak
 
+## Executive Summary
+
+![DebugDiag smoking gun — nativerd.dll PATH_CACHE holding 2.08 GB](artefacts/debugdiag-smoking-gun.png)
+
+**The leaking module is `nativerd.dll`** — the IIS Native Request Handler. This is a core IIS DLL (shipped by Microsoft, not Azure) responsible for resolving incoming HTTP request URLs against the IIS site and application configuration. It translates raw URL paths into IIS metabase paths of the form `MACHINE/WEBROOT/APPHOST/<site>/<path>` so IIS knows which handler to dispatch to.
+
+Inside `nativerd.dll` is a class called `PATH_CACHE`. Its job is to cache the result of URL-to-metabase-path lookups so that repeated requests to the same URL path are resolved cheaply. To do this it calls two functions: `PATH_CACHE::AllocateNode` — which allocates a trie node for each unique URL path segment — and `PATH_CACHE::AllocateBuckets` — which allocates the hash bucket arrays those nodes live in.
+
+**The bug:** these allocations are never freed for paths that are not re-used. Every request to a URL path that has not been seen before causes `nativerd.dll` to allocate a new trie node (≈ 304–352 bytes of native heap, sized to the URL length) for each segment of the path and to add it to the `PATH_CACHE`. The cache has no eviction policy and no size cap. Once allocated, a node is held for the lifetime of the worker process. On an application that serves high-cardinality URLs — unique entity IDs, GUIDs, or user-generated slugs — the cache grows without bound, one native block per path segment per unique request, and the process's private bytes climb linearly until it is recycled or crashes.
+
+The DebugDiag report above is the direct evidence: `nativerd.dll` holds **2.08 GB** of outstanding native allocations, entirely dominated by `PATH_CACHE::AllocateNode` (2.03 GB) and `PATH_CACHE::AllocateBuckets` (50 MB). The application code itself plays no role — the leak occurs before any managed code runs.
+
+Full DebugDiag analysis report: [debugdiag-report.mht](artefacts/debugdiag-report.mht)
+
+---
+
 Minimal ASP.NET Core 8 app reproducing a native memory leak in IIS in-process hosting on Windows Azure App Service — does not reproduce on Linux.
 
 **Trigger:** Every request to a unique URL path leaks ~320 bytes of unmanaged memory per path segment, regardless of application code. The leak is in the IIS/Windows hosting layer, not in .NET.
@@ -62,6 +78,8 @@ The script prints req/s, error count, and private bytes every 5 seconds:
 **Azure Portal → App Service → Monitoring → Metrics → Private Bytes (Max, 1-min)**
 
 You should see a steady, linear climb that does not plateau. Stop the load test and observe that private bytes do not drop — confirming unmanaged memory that is never reclaimed.
+
+![Live app reporting 6,113 MB private bytes](artefacts/private-bytes-6gb.png)
 
 ---
 
