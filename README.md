@@ -1,5 +1,7 @@
 # win-app-svc-url-cardinality-leak
 
+Minimal reproduction showing that all Azure Windows App Services leak native memory when serving high-cardinality URL paths — regardless of application code.
+
 ## Executive Summary
 
 ![DebugDiag smoking gun — nativerd.dll PATH_CACHE holding 2.08 GB](artefacts/debugdiag-smoking-gun.png)
