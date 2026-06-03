@@ -18,8 +18,9 @@ app.MapGet("/", (HttpContext ctx) =>
     var leakTrackHtml = leakTrackModule is not null
         ? $"<p>LeakTrack: loaded ({System.Net.WebUtility.HtmlEncode(leakTrackModule.FileName)})</p>"
         : "<p>LeakTrack: NOT loaded</p>";
+    var leakTrackExample = $"{{\"StartTimeUtc\":\"{DateTime.UtcNow:yyyy-MM-ddT00:00:00.000Z}\",\"MaxHours\":360,\"MaxDumpCount\":3,\"InjectLeakTrack\":true}}";
     return Results.Content(
-        $"<html><body><p>WinAppSvcUrlCardinalityLeak (built {buildTime:yyyy-MM-dd HH:mm:ss} UTC)</p><p>Private Bytes: {mb:N0} MB</p>{crashMonitoringHtml}{leakTrackHtml}</body></html>",
+        $"<html><body><p>WinAppSvcUrlCardinalityLeak (built {buildTime:yyyy-MM-dd HH:mm:ss} UTC)</p><p>Private Bytes: {mb:N0} MB</p>{crashMonitoringHtml}{leakTrackHtml}<p>To enable LeakTrack, set <code>WEBSITE_CRASHMONITORING_SETTINGS</code> to:</p><pre>{System.Net.WebUtility.HtmlEncode(leakTrackExample)}</pre></body></html>",
         "text/html");
 });
 
