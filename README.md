@@ -6,7 +6,7 @@ Minimal reproduction showing that all Azure Windows App Services leak native mem
 
 ![DebugDiag smoking gun — nativerd.dll PATH_CACHE holding 2.08 GB](artefacts/debugdiag-smoking-gun.png)
 
-**The leaking module is `nativerd.dll`** — the IIS Native Request Handler. This is a core IIS DLL (shipped by Microsoft, not Azure) responsible for resolving incoming HTTP request URLs against the IIS site and application configuration. It translates raw URL paths into IIS metabase paths of the form `MACHINE/WEBROOT/APPHOST/<site>/<path>` so IIS knows which handler to dispatch to.
+**The leaking module is `nativerd.dll`** — the IIS Native Request Handler. This is a core IIS DLL developed by Microsoft's IIS / Web Platform team, responsible for resolving incoming HTTP request URLs against the IIS site and application configuration. It translates raw URL paths into IIS metabase paths of the form `MACHINE/WEBROOT/APPHOST/<site>/<path>` so IIS knows which handler to dispatch to.
 
 Inside `nativerd.dll` is a class called `PATH_CACHE`. Its job is to cache the result of URL-to-metabase-path lookups so that repeated requests to the same URL path are resolved cheaply. To do this it calls two functions: `PATH_CACHE::AllocateNode` — which allocates a trie node for each unique URL path segment — and `PATH_CACHE::AllocateBuckets` — which allocates the hash bucket arrays those nodes live in.
 
