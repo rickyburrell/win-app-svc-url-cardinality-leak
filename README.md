@@ -1,12 +1,12 @@
 # win-app-svc-url-cardinality-leak
 
-Minimal reproduction showing that all Azure Windows App Services leak native memory when serving high-cardinality URL paths — regardless of application code.
+Minimal reproduction showing that Azure Windows App Services leak native memory when serving high-cardinality URL paths — observed on all tested SKUs, regardless of application code.
 
 ## Executive Summary
 
 ![DebugDiag smoking gun — nativerd.dll PATH_CACHE holding 2.08 GB](artefacts/debugdiag-smoking-gun.png)
 
-**The leaking module is `nativerd.dll`** — the IIS Native Request Handler. This is a core IIS DLL developed by Microsoft's IIS / Web Platform team, responsible for resolving incoming HTTP request URLs against the IIS site and application configuration. It translates raw URL paths into IIS metabase paths of the form `MACHINE/WEBROOT/APPHOST/<site>/<path>` so IIS knows which handler to dispatch to.
+**DebugDiag call stacks attribute the leak to `nativerd.dll`** — the IIS Native Request Handler. This is a core IIS DLL developed by Microsoft's IIS / Web Platform team, responsible for resolving incoming HTTP request URLs against the IIS site and application configuration. It translates raw URL paths into IIS metabase paths of the form `MACHINE/WEBROOT/APPHOST/<site>/<path>` so IIS knows which handler to dispatch to.
 
 Inside `nativerd.dll` is a class called `PATH_CACHE`. Its job is to cache the result of URL-to-metabase-path lookups so that repeated requests to the same URL path are resolved cheaply. To do this it calls two functions: `PATH_CACHE::AllocateNode` — which allocates a trie node for each unique URL path segment — and `PATH_CACHE::AllocateBuckets` — which allocates the hash bucket arrays those nodes live in.
 
@@ -107,7 +107,7 @@ Leak confirmed on the following platform. Versions are recorded here so the repo
 | `aspnetcorev2.dll` (platform/IIS module) | 13.1.19331.0 (Azure App Service platform-managed) |
 | Hosting model | IIS in-process |
 
-**Note on module attribution:** The leak is in the IIS in-process hosting layer, but the exact module responsible is unconfirmed without private symbols. Azure Windows App Service injects additional native modules into the IIS pipeline (`ModSecurity IIS`, `iisnode`, `ApplicationRequestRouting`, `RewriteModule`, and others) alongside `AspNetCoreModuleV2`. Any of these could be the source of the unreleased native request structures.
+**Note on module attribution:** DebugDiag call stacks confirm that `nativerd.dll` is the allocating module — `PATH_CACHE::AllocateNode` and `PATH_CACHE::AllocateBuckets` appear directly in the allocation stacks. Azure Windows App Service injects additional native modules alongside `AspNetCoreModuleV2` (`ModSecurity IIS`, `iisnode`, `ApplicationRequestRouting`, `RewriteModule`, and others); whether one of these triggers the `PATH_CACHE` population or whether `nativerd.dll` does so autonomously as part of request routing would require private symbols to fully trace. The allocating module is not in question; the initiating call chain is.
 
 ---
 
