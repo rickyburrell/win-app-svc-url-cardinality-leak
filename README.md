@@ -16,6 +16,16 @@ The DebugDiag report above is the direct evidence: `nativerd.dll` holds **2.08 G
 
 Full DebugDiag analysis report: [debugdiag-report.mht](artefacts/debugdiag-report.mht)
 
+<div style="background:#fff9c4;border-left:4px solid #f9c700;padding:12px 16px;margin:16px 0;border-radius:4px;">
+<strong>Update — 9 June 2026:</strong> While we wait for the IIS team to fix the underlying <code>nativerd.dll</code> leak, it can be mitigated by disabling failed request tracing — <code>iisfreb.dll</code> is at fault. Set the following in your App Service configuration:
+
+```json
+failedRequestsTracing: {
+  enabled: false
+}
+```
+</div>
+
 ---
 
 Minimal ASP.NET Core 8 app reproducing a native memory leak in IIS in-process hosting on Windows Azure App Service — does not reproduce on Linux.
